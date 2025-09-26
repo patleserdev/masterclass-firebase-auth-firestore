@@ -5,26 +5,36 @@ import {
   getAuth,
   signInWithPopup,
   GoogleAuthProvider,
-  FacebookAuthProvider,
   signOut,
-} from "firebase/auth";
 
-import { getFirestore,addDoc,collection ,query,onSnapshot,orderBy} from "firebase/firestore"
+} from "firebase/auth";
+import {
+  getFirestore,
+  addDoc,
+  collection,
+  query,
+  onSnapshot,
+  orderBy,
+} from "firebase/firestore";
 import { firebaseConfig } from "@/firebase/config";
 import { FirebaseContext } from "@/firebase/firebase.context";
 import { useEffect, useState } from "react";
 
-const googleAuthProvider = new GoogleAuthProvider();
+const authProviders = {
+  google: new GoogleAuthProvider(),
+
+};
 
 export default function App({ Component, pageProps }) {
   const [auth, setAuth] = useState(null);
+  const [db, setDb] = useState(null);
   const [user, setUser] = useState(null);
-  const [db,setDb] = useState(null)
-  const [messages,setMessages]=useState([])
+  const [messages, setMessages] = useState([]);
+
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
     setAuth(getAuth(app));
-    setDb(getFirestore(app))
+    setDb(getFirestore(app));
   }, []);
 
   useEffect(() => {
@@ -41,47 +51,46 @@ export default function App({ Component, pageProps }) {
   }, [auth]);
 
   useEffect(() => {
-    if(db)
-    {
-      const q = query(collection,(db,'messages'))
+    if (db) {
+      const q = query(collection(db, "messages"), orderBy("sentAt"));
       const unsubscribe = onSnapshot(q, data => {
-        
         const messages = data.docs.map(doc => {
-          const data = doc.data()
-          data.sentAt = data.sentAt.toDate()
-          return {id:doc.id,data}
-        })
-        console.log(messages)
-        setMessages(messages)
-      })
+          const data = doc.data();
+          data.sentAt = data.sentAt.toDate();
+          return { id: doc.id, ...data };
+        });
+        setMessages(messages);
+      });
 
       return () => {
-        unsubscribe()
-      }
+        unsubscribe();
+      };
     }
-   
+  }, [db]);
 
-  },[db])
-  const signin = async () => await signInWithPopup(auth, googleAuthProvider);
+  const signin = async (provider = "google") =>
+    await signInWithPopup(auth, authProviders[provider.toLowerCase()]);
 
   const signout = async () => await signOut(auth);
 
-  const sendMessage = async (content) => {
-    if(!content || !user ||db) return
+  const sendMessage = async content => {
+    if (!content || !user || !db) return;
     const message = {
       content,
-      user:{
-        id:user.uid,
-        displayName:user.displayName,
-        photoUrl: user.photoUrl,
+      user: {
+        id: user.uid,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
       },
-      sentAt:new Date()
-    }
-    await addDoc(collection(db,'messages'),message)
-  }
+      sentAt: new Date(),
+    };
+    await addDoc(collection(db, "messages"), message);
+  };
 
   return (
-    <FirebaseContext.Provider value={{ signin, user, signout,sendMessage,messages }}>
+    <FirebaseContext.Provider
+      value={{ signin, user, signout, sendMessage, messages }}
+    >
       <Component {...pageProps} />
     </FirebaseContext.Provider>
   );

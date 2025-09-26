@@ -14,11 +14,13 @@ export default function Message({ message, isOwnMessage }) {
       }`}
     >
       <img
+        title={message?.user.displayName}
         src={message?.user.photoURL || randomAvatar}
         alt={message?.user.displayName || ""}
         className={styles.avatar}
       />
       <div>
+        <h6>{message.user.displayName}</h6>
         <h6>{message.content}</h6>
         <p>
           {String(sentAt.getHours())}h
